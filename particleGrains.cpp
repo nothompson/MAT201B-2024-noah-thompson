@@ -14,7 +14,7 @@ using namespace std;
 #include <fstream>
 #include <vector>
 
-const int MAX_PARTICLES = 10000;
+const int MAX_PARTICLES = 50000;
 
 Vec3f randomVec3f(float scale) {
   return Vec3f(rnd::uniformS(), rnd::uniformS(), rnd::uniformS()) * scale;
@@ -48,17 +48,22 @@ struct MyApp : public App {
 
 
   Parameter AUDIO{"/AUDIO", "", 0, 0, 0};
-  Parameter impulseRate{"/impulseRate", "", 1.0, 0.1, 20.0};
+  Parameter impulseRate{"/impulseRate", "", 1.0, 0.1, 100.0};
+
   Parameter grainRateMax{"/grainRateMax", "", 1.0, 0.1, 20.0};
   Parameter grainRateMin{"/grainRateMin", "", 1.0, 0.01, 20.0};
+
+  Parameter grainPosition{"/grainPosition", "", 0.0, 0.0, 1.0};
   Parameter grainPositionMin{"/grainPositionMin", "", 0.0, 0.0, 1.0};
-  Parameter grainPositionMax{"/grainPositionMax", "", 1.0, 0.0, 1.0};
+  Parameter grainPositionMax{"/grainPositionMax", "", 0.0, 0.0, 1.0};
+
   Parameter reverseAmount{"/reverseAmount", "", 0.0, 0.0, 1.0};
   // Parameter fadeIn{"/fadeIn", "", 2.0, 2.0, 10000.0};
   // Parameter fadeOut{"/fadeOut", "", 2.0, 2.0, 10000.0};
 
   // Parameter fadeRate{"/fadeRate", "", 1.2, 0.1, 10.0};
   Parameter fadeSlope{"/fadeSlope", "", 0.3, 0.0, 1.0};
+
   Parameter VISUALS{"/VISUALS", "", 0, 0, 0};
   // Parameter pointSize{"/pointSize", "", 1.0, 0.0, 2.0};
   // Parameter timeStep{"/timeStep", "", 0.1, 0.01, 0.6};
@@ -87,7 +92,7 @@ struct MyApp : public App {
   gam::SamplePlayer<float, gam::ipl::Cubic, gam::phsInc::Loop> player;
 
   void onInit() override {
-    player.load("piano.wav");
+    player.load("growth012.wav");
 
     follow[0].filter.type(gam::LOW_PASS);
     follow[1].filter.type(gam::BAND_PASS);
@@ -102,6 +107,7 @@ struct MyApp : public App {
     gui.add(impulseRate);
     gui.add(grainRateMax);
     gui.add(grainRateMin);
+    gui.add(grainPosition);
     gui.add(grainPositionMin);
     gui.add(grainPositionMax);
     gui.add(reverseAmount);
@@ -121,11 +127,11 @@ struct MyApp : public App {
     // gui.add(panRange);
   }
 
-  MyApp(){
-    tmr.period(1 / impulseRate);
-    tmr.phaseMax();
-    slope = fadeSlope;
-  }
+  // MyApp(){
+  //   tmr.period(1 / impulseRate);
+  //   tmr.phaseMax();
+  //   slope = fadeSlope;
+  // }
 
   float pointSize = (grainRateMax + grainRateMin) / 2;
 
@@ -199,10 +205,13 @@ struct MyApp : public App {
     }
 
     vector<Vec3f> &position(mesh.vertices());
+
+    float mImpulse = impulseRate;
+
     for (int i = 0; i < velocity.size(); i++) {
       // "semi-implicit" Euler integration
       velocity[i] += (force[i] / mass[i] * (impulseRate * 0.25)) * (value + (parameter[0] * 10));
-      position[i] += (velocity[i] * (impulseRate * 0.0125)) * value;
+      position[i] += (velocity[i] * (impulseRate * 0.125)) * value;
     }
 
 
@@ -212,23 +221,40 @@ struct MyApp : public App {
 
     if (time > delay) {
       time -= delay;
-      delay = (rnd::uniform(1.0, 0.5)) / impulseRate;
+      // delay = (rnd::uniform(1.0, 0.5)) / impulseRate;
+      delay = 1 / impulseRate;
 
         // for melodic samples
-      player.rate(grainRateMax * (rnd::prob(reverseAmount) ? -1 : 1));
+      // player.rate(grainRateMax * (rnd::prob(reverseAmount) ? -1 : 1));
 
         // for textural samples
-      // player.rate((float)rnd::uniform(1 * grainRateMax, 1 * grainRateMin) * (rnd::prob(reverseAmount) ? -1 : 1));
+      player.rate((float)rnd::uniform(1 * grainRateMax, 1 * grainRateMin) * (rnd::prob(reverseAmount) ? -1 : 1));
       
-      player.phase((float)rnd::uniform(1 * grainPositionMax, 1 * grainPositionMin));
+      float positionMin = grainPosition - grainPositionMin;
+      float positionMax = grainPosition + grainPositionMax;
+      if (positionMin < 0){
+        positionMin = 0;
+      } 
+      if (positionMax > 1){
+        positionMax = 1;
+      }
+
+      player.phase((float)rnd::uniform(positionMin, positionMax));
+      // player.phase((float)grainPosition);
+      // player.phase(0);
+
     }
     time += dt;
   }
 
   void onSound(AudioIOData& io) override {
     // mPan.pos(rnd::uniform(1 * panRange, 0));
+    tmr.phaseMax();
+    slope = fadeSlope;
     while (io()) {
       // player.fade(fadeIn,fadeOut);
+
+    tmr.period(1 / impulseRate);
 
       if(tmr()){
         env.attack(slope);
@@ -245,13 +271,15 @@ struct MyApp : public App {
       // mPan(s1, s1, s2);
       io.out(0) = s1;
       io.out(1) = s1;
-      value.set(30 * ampFollow(s1));
+      value.set(1000 * ampFollow(s1));
       for (int i = 0; i < 3; i++) {
         parameter[i].set(follow[i](s1));
       }
     }
 
     // cout << (parameter[0]) << endl;
+
+      // x y z forces based on 3 band filter analysis 
     for (int i = 0; i < velocity.size(); i++) {
       force[i] += Vec3f(rnd::uniform(10,1) * parameter[0] * value * 5, rnd::uniform(10,1) * parameter[1] * value * 5, rnd::uniform(10,1)* parameter[2] * value * 5);
       force[i] -= Vec3f(rnd::uniform(10,1) * parameter[0] * value * 5, rnd::uniform(10,1) * parameter[1] * value * 5, rnd::uniform(10,1)* parameter[2] * value * 5);
