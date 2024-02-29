@@ -20,6 +20,13 @@ using namespace std;
 struct CommonState {
   char data[66000]; // larger than a UDP packet
   ShaderProgram pointShader;
+  float pointSize;
+
+    Parameter parameter[3]{
+    {"low", "", 0,  0, 127},
+    {"mid", "", 0,  0, 127},
+    {"high", "", 0, 0, 127}
+  };
 };
 
 const int MAX_PARTICLES = 50000;
@@ -39,11 +46,7 @@ struct FilterFollow {
 
 struct MyApp : DistributedAppWithState<CommonState> {
 
-  Parameter parameter[3]{
-    {"low", "", 0,  0, 127},
-    {"mid", "", 0,  0, 127},
-    {"high", "", 0, 0, 127}
-  };
+
   FilterFollow follow[3];
 
   Parameter value {"/value", "", 0,0,1};
@@ -73,7 +76,7 @@ struct MyApp : DistributedAppWithState<CommonState> {
   Parameter fadeSlope{"/fadeSlope", "", 0.3, 0.0, 1.0};
 
   Parameter VISUALS{"/VISUALS", "", 0, 0, 0};
-  // Parameter pointSize{"/pointSize", "", 1.0, 0.0, 2.0};
+  Parameter pointSize{"/pointSize", "", 1.0, 0.0, 2.0};
   // Parameter timeStep{"/timeStep", "", 0.1, 0.01, 0.6};
   Parameter dragFactor{"/dragFactor", "", 0.3, 0.0, 0.9};
   Parameter sphereRadius{"/sphereRadius", "", 1.5, 0.3, 3.0};
@@ -124,7 +127,7 @@ struct MyApp : DistributedAppWithState<CommonState> {
     // gui.add(fadeIn);
     // gui.add(fadeOut);
     gui.add(VISUALS);
-    // gui.add(pointSize);  // add parameter to GUI
+    gui.add(pointSize);  // add parameter to GUI
     // gui.add(timeStep);   // add parameter to GUI
     gui.add(dragFactor);   // add parameter to GUI
     gui.add(sphereRadius);
@@ -141,7 +144,7 @@ struct MyApp : DistributedAppWithState<CommonState> {
   //   slope = fadeSlope;
   // }
 
-  float pointSize = (grainRateMax + grainRateMin) / 2;
+  state().pointSize = pointSize;
 
   void onCreate() override {
     // compile shaders
@@ -218,7 +221,7 @@ struct MyApp : DistributedAppWithState<CommonState> {
 
     for (int i = 0; i < velocity.size(); i++) {
       // "semi-implicit" Euler integration
-      velocity[i] += (force[i] / mass[i] * (impulseRate * 0.25)) * (value + (parameter[0] * 10));
+      velocity[i] += (force[i] / mass[i] * (impulseRate * 0.25)) * (value + (state().parameter[0] * 10));
       position[i] += (velocity[i] * (impulseRate * 0.125)) * value;
     }
 
@@ -281,7 +284,7 @@ struct MyApp : DistributedAppWithState<CommonState> {
       io.out(1) = s1;
       value.set(1000 * ampFollow(s1));
       for (int i = 0; i < 3; i++) {
-        parameter[i].set(follow[i](s1));
+        state().parameter[i].set(follow[i](s1));
       }
     }
 
@@ -289,8 +292,8 @@ struct MyApp : DistributedAppWithState<CommonState> {
 
       // x y z forces based on 3 band filter analysis 
     for (int i = 0; i < velocity.size(); i++) {
-      force[i] += Vec3f(rnd::uniform(10,1) * parameter[0] * value * 5, rnd::uniform(10,1) * parameter[1] * value * 5, rnd::uniform(10,1)* parameter[2] * value * 5);
-      force[i] -= Vec3f(rnd::uniform(10,1) * parameter[0] * value * 5, rnd::uniform(10,1) * parameter[1] * value * 5, rnd::uniform(10,1)* parameter[2] * value * 5);
+      force[i] += Vec3f(rnd::uniform(10,1) * state().parameter[0] * value * 5, rnd::uniform(10,1) * state().parameter[1] * value * 5, rnd::uniform(10,1)* state().parameter[2] * value * 5);
+      force[i] -= Vec3f(rnd::uniform(10,1) * state().parameter[0] * value * 5, rnd::uniform(10,1) * state().parameter[1] * value * 5, rnd::uniform(10,1)* state().parameter[2] * value * 5);
       
       // force[i] -= Vec3f(rnd::uniform(10,1) * parameter[0], rnd::uniform(10,1) * parameter[1], rnd::uniform(10,1)* parameter[2]);
       // force[i] += randomVec3f(value) * 5;
@@ -320,12 +323,12 @@ struct MyApp : DistributedAppWithState<CommonState> {
   void onDraw(Graphics &g) override {
     g.clear(0);
     g.shader(state().pointShader);
-    g.shader().uniform("pointSize", pointSize / 100);
+    g.shader().uniform("pointSize", state().pointSize / 100);
     g.blending(true);
     g.blendTrans();
     g.depthTesting(true);
     // g.rotate(360*time, 0, 1, 0);
-    g.color(RGB(0.5 + parameter[0], 1.0 - parameter[1], sqrt(parameter[2])));
+    g.color(RGB(0.5 + state().parameter[0], 1.0 - state().parameter[1], sqrt(state().parameter[2])));
     g.draw(mesh);
   }
 };
