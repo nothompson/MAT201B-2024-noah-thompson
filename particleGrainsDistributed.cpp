@@ -18,10 +18,11 @@ using namespace std;
 
 
 struct CommonState {
-  int MAX_PARTICLES[10000];
-  // float colorState[1];
+  // float particlePositions[10000];
+  float colorState[3];
 
-}
+};
+
 
 
 Vec3f randomVec3f(float scale) {
@@ -45,6 +46,10 @@ struct MyApp : DistributedAppWithState<CommonState> {
     {"high", "", 0, 0, 127}
   };
   FilterFollow follow[3];
+
+  colorState[0] = parameter[0];
+  colorState[1] = parameter[1];
+  colorState[2] = parameter[2];
 
   Parameter value {"/value", "", 0,0,1};
   gam::EnvFollow<>ampFollow;
@@ -158,9 +163,9 @@ struct MyApp : DistributedAppWithState<CommonState> {
     auto randomColor = []() { return HSV(rnd::uniform(), 1.0f, 1.0f); };
 
     mesh.primitive(Mesh::POINTS);
-    for (int _ = 0; _ < MAX_PARTICLES; _++) {
+    for (int _ = 0; _ < 10000; _++) {
       mesh.vertex(Vec3f(2 * sin(1.5), 2 * cos(1.5), (1/ (2 * M_PI)) * 1.5));
-      // mesh.vertex(randomVec3f(1));
+      // mesh.vertex(state().particlePositions[_]);
       mesh.color(randomColor());
 
       // float m = rnd::uniform(3.0, 0.5);
@@ -330,25 +335,25 @@ struct MyApp : DistributedAppWithState<CommonState> {
       freeze = !freeze;
     }
 
-    // if (k.key() == '1') {
-    //   player.load("growth012.wav");
-    // }
+    if (k.key() == '1') {
+      player.load("growth012.wav");
+    }
 
-    // if (k.key() == '2') {
-    //   player.load("piano.wav");
-    // }
+    if (k.key() == '2') {
+      player.load("piano.wav");
+    }
 
-    // if (k.key() == '3') {
-    //   player.load("3patch.wav");
-    // }
+    if (k.key() == '3') {
+      player.load("3patch.wav");
+    }
 
-    // if (k.key() == '4') {
-    //   player.load("myGuitarCmin..wav");
-    // }
+    if (k.key() == '4') {
+      player.load("myGuitarCmin..wav");
+    }
 
-    // if (k.key() == '5') {
-    //   player.load("take4.wav");
-    // }
+    if (k.key() == '5') {
+      player.load("take4.wav");
+    }
 
   
 
@@ -374,7 +379,7 @@ struct MyApp : DistributedAppWithState<CommonState> {
     g.depthTesting(true);
     // g.rotate(360*time, 0, 1, 0);
     // g.color(RGB(0.25 + sqrt(parameter[0]), 0.25 + sqrt(parameter[1]), 0.25 + sqrt(parameter[2])));
-    g.color(HSV((parameter[0] + parameter[1], parameter[2]),0.25 + value,1));
+    g.color(HSV((state().colorState[0] + state().colorState[1], state().colorState[2]),0.25 + value,1));
     g.draw(mesh);
   }
 };
