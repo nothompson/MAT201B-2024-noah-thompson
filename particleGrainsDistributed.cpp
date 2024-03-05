@@ -330,25 +330,25 @@ struct MyApp : DistributedAppWithState<CommonState> {
       freeze = !freeze;
     }
 
-    if (k.key() == '1') {
-      player.load("growth012.wav");
-    }
+    // if (k.key() == '1') {
+    //   player.load("growth012.wav");
+    // }
 
-    if (k.key() == '2') {
-      player.load("piano.wav");
-    }
+    // if (k.key() == '2') {
+    //   player.load("piano.wav");
+    // }
 
-    if (k.key() == '3') {
-      player.load("3patch.wav");
-    }
+    // if (k.key() == '3') {
+    //   player.load("3patch.wav");
+    // }
 
-    if (k.key() == '4') {
-      player.load("myGuitarCmin..wav");
-    }
+    // if (k.key() == '4') {
+    //   player.load("myGuitarCmin..wav");
+    // }
 
-    if (k.key() == '5') {
-      player.load("take4.wav");
-    }
+    // if (k.key() == '5') {
+    //   player.load("take4.wav");
+    // }
 
   
 
