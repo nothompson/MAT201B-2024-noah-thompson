@@ -135,34 +135,36 @@ struct MyApp : DistributedAppWithState<CommonState> {
     follow[1].filter.freq(2000);
     follow[2].filter.freq(8000);
 
-    auto GUIdomain = GUIDomain::enableGUI(defaultWindowDomain());
-    auto &gui = GUIdomain->newGUI();
-    gui.add(AUDIO);
-    gui.add(amplitude);
-    gui.add(impulseRate);
-    // gui.add(rateRandomization);
-    gui.add(rateToggle);
-    gui.add(grainRateMax);
-    gui.add(grainRateMin);
-    gui.add(grainPosition);
-    gui.add(grainSpread);
-    // gui.add(grainPositionMin);
-    // gui.add(grainPositionMax);
-    gui.add(reverseAmount);
-    // gui.add(fadeRate);
-    gui.add(fadeSlope);
-    // gui.add(fadeIn);
-    // gui.add(fadeOut);
-    gui.add(VISUALS);
-    gui.add(pointSize);  // add parameter to GUI
-    // gui.add(timeStep);   // add parameter to GUI
-    gui.add(dragFactor);   // add parameter to GUI
-    gui.add(sphereRadius);
-    gui.add(hookeConstant);
-    // gui.add(coulombConstant);
-    // gui.add(symmetry);
-    // gui.add(kickAmount);
-    // gui.add(panRange);
+    if (isPrimary()) {
+        auto GUIdomain = GUIDomain::enableGUI(defaultWindowDomain());
+        auto &gui = GUIdomain->newGUI();
+        gui.add(AUDIO);
+        gui.add(amplitude);
+        gui.add(impulseRate);
+        // gui.add(rateRandomization);
+        gui.add(rateToggle);
+        gui.add(grainRateMax);
+        gui.add(grainRateMin);
+        gui.add(grainPosition);
+        gui.add(grainSpread);
+        // gui.add(grainPositionMin);
+        // gui.add(grainPositionMax);
+        gui.add(reverseAmount);
+        // gui.add(fadeRate);
+        gui.add(fadeSlope);
+        // gui.add(fadeIn);
+        // gui.add(fadeOut);
+        gui.add(VISUALS);
+        gui.add(pointSize);  // add parameter to GUI
+        // gui.add(timeStep);   // add parameter to GUI
+        gui.add(dragFactor);   // add parameter to GUI
+        gui.add(sphereRadius);
+        gui.add(hookeConstant);
+        // gui.add(coulombConstant);
+        // gui.add(symmetry);
+        // gui.add(kickAmount);
+        // gui.add(panRange);
+    }
   }
 
   // MyApp(){
