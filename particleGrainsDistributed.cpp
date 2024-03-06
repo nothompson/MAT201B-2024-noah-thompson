@@ -19,9 +19,19 @@ using namespace std;
 
 struct CommonState {
   // float particlePositions[10000];
-  float colorState[3];
 
+  Vec3f mVertices[50000];
+
+  float low;
+  float med;
+  float high;
+  float value;
+  // HSV colorState = ((low + med + high),1,1);
+
+  HSV colorState;
 };
+
+
 
 
 
@@ -47,9 +57,7 @@ struct MyApp : DistributedAppWithState<CommonState> {
   };
   FilterFollow follow[3];
 
-  colorState[0] = parameter[0];
-  colorState[1] = parameter[1];
-  colorState[2] = parameter[2];
+
 
   Parameter value {"/value", "", 0,0,1};
   gam::EnvFollow<>ampFollow;
@@ -65,8 +73,9 @@ struct MyApp : DistributedAppWithState<CommonState> {
   Parameter impulseRate{"/impulseRate", "", 1.0, 0.1, 100.0};
 
   Parameter rateToggle{"/rateToggle", "", 0.0, 0.0, 1.0};
-  Parameter grainRateMax{"/grainRateMax", "", 1.0, 0.1, 20.0};
-  Parameter grainRateMin{"/grainRateMin", "", 1.0, 0.01, 20.0};
+  // ParameterBool rateRandomization{"/rateRandomization", "", 0.0, 0.0, 1.0};
+  Parameter grainRateMax{"/grainRateMax", "", 1.0, 0.125, 10.0};
+  Parameter grainRateMin{"/grainRateMin", "", 1.0, 0.0625, 10.0};
 
   Parameter grainPosition{"/grainPosition", "", 0.0, 0.0, 1.0};
   Parameter grainSpread{"/grainSpread", "", 0.0, 0.0, 1.0};
@@ -81,11 +90,11 @@ struct MyApp : DistributedAppWithState<CommonState> {
   Parameter fadeSlope{"/fadeSlope", "", 0.3, 0.0, 1.0};
 
   Parameter VISUALS{"/VISUALS", "", 0, 0, 0};
-  // Parameter pointSize{"/pointSize", "", 1.0, 0.0, 2.0};
+  Parameter pointSize{"/pointSize", "", 1.0, 0.0, 2.0};
   // Parameter timeStep{"/timeStep", "", 0.1, 0.01, 0.6};
-  Parameter dragFactor{"/dragFactor", "", 0.3, 0.0, 0.9};
-  Parameter sphereRadius{"/sphereRadius", "", 0.5, 0.05, 1.0};
-  Parameter hookeConstant{"/hookeConstant", "", 0.1, 0.0, 1.0};
+  Parameter dragFactor{"/dragFactor", "", 0.25, 0.0, 0.9};
+  Parameter sphereRadius{"/sphereRadius", "", 0.5, 0.05, 10.0};
+  Parameter hookeConstant{"/hookeConstant", "", 0.5, 0.0, 1.0};
   // Parameter coulombConstant{"/coulombConstant", "", 0.0, 0.0, 0.5};
   // Parameter symmetry{"asymmetry", "", 1.0, 0.01, 1.0};
   // Parameter kickAmount{"/kickAmount", "", 1.0, 0.05, 10.0};
@@ -94,6 +103,7 @@ struct MyApp : DistributedAppWithState<CommonState> {
 
   //  simulation state
   Mesh mesh;  // position *is inside the mesh* mesh.vertices() are the positions
+  Mesh mesh2;
   vector<Vec3f> velocity;
   vector<Vec3f> force;
   // vector<Vec3f> displacement;
@@ -108,6 +118,14 @@ struct MyApp : DistributedAppWithState<CommonState> {
   gam::SamplePlayer<float, gam::ipl::Cubic, gam::phsInc::Loop> player;
 
   void onInit() override {
+
+    auto cuttleboneDomain =
+        CuttleboneStateSimulationDomain<CommonState>::enableCuttlebone(this);
+    if (!cuttleboneDomain) {
+      std::cerr << "ERROR: Could not start Cuttlebone. Quitting." << std::endl;
+      quit();
+    }
+
     player.load("growth012.wav");
 
     follow[0].filter.type(gam::LOW_PASS);
@@ -122,6 +140,7 @@ struct MyApp : DistributedAppWithState<CommonState> {
     gui.add(AUDIO);
     gui.add(amplitude);
     gui.add(impulseRate);
+    // gui.add(rateRandomization);
     gui.add(rateToggle);
     gui.add(grainRateMax);
     gui.add(grainRateMin);
@@ -135,7 +154,7 @@ struct MyApp : DistributedAppWithState<CommonState> {
     // gui.add(fadeIn);
     // gui.add(fadeOut);
     gui.add(VISUALS);
-    // gui.add(pointSize);  // add parameter to GUI
+    gui.add(pointSize);  // add parameter to GUI
     // gui.add(timeStep);   // add parameter to GUI
     gui.add(dragFactor);   // add parameter to GUI
     gui.add(sphereRadius);
@@ -152,9 +171,10 @@ struct MyApp : DistributedAppWithState<CommonState> {
   //   slope = fadeSlope;
   // }
 
-  float pointSize = (grainRateMax + grainRateMin) / 2;
+  
 
   void onCreate() override {
+
     // compile shaders
     pointShader.compile(slurp("../point-vertex.glsl"),
                         slurp("../point-fragment.glsl"),
@@ -162,10 +182,12 @@ struct MyApp : DistributedAppWithState<CommonState> {
 
     auto randomColor = []() { return HSV(rnd::uniform(), 1.0f, 1.0f); };
 
+
     mesh.primitive(Mesh::POINTS);
-    for (int _ = 0; _ < 10000; _++) {
+    for (int _ = 0; _ < 50000; _++) {
       mesh.vertex(Vec3f(2 * sin(1.5), 2 * cos(1.5), (1/ (2 * M_PI)) * 1.5));
-      // mesh.vertex(state().particlePositions[_]);
+      // mesh.vertex(randomVec3f(1));
+      
       mesh.color(randomColor());
 
       // float m = rnd::uniform(3.0, 0.5);
@@ -196,7 +218,9 @@ struct MyApp : DistributedAppWithState<CommonState> {
     // Octree tree(Vec3f(0), Vec3f(1), 0.25);
     // tree.build(mesh.vertices());
 
-    float mSphere = sphereRadius + value;
+    // float mSphere = tan(sphereRadius + value * sin(parameter[0])) / (2 * M_PI);
+
+    float mSphere = rnd::uniform(5,1) * (sphereRadius * value) * (impulseRate * 0.25);
 
     for (int i = 0; i < velocity.size(); i++) {
       Vec3f X0 = mesh.vertices()[i]; //resting 
@@ -228,16 +252,25 @@ struct MyApp : DistributedAppWithState<CommonState> {
 
     vector<Vec3f> &position(mesh.vertices());
 
+    state().low = parameter[0];
+    state().med = parameter[1];
+    state().high = parameter[2];
+    state().value = value;
+
+    state().colorState = HSV((state().low + state().med + state().high), 0.25 + state().value, 1.0);
+  
+    // float pointSize = (grainRateMax + grainRateMin) / 2;
+
     float mImpulse = impulseRate;
 
-    if (mImpulse > 10.0) {
-      mImpulse = 10.0;
+    if (mImpulse > 5.0) {
+      mImpulse = 5.0;
     }
 
     for (int i = 0; i < velocity.size(); i++) {
       // "semi-implicit" Euler integration
-      velocity[i] += (force[i] / mass[i] * (mImpulse * 0.125)) * (value + (parameter[0]));
-      position[i] += (velocity[i] * (mImpulse * 0.125));
+      velocity[i] += (force[i] / mass[i] * (mImpulse * 0.25)) * (value + (parameter[0] * 2));
+      position[i] += (velocity[i] * (mImpulse * 0.25) * value);
     }
 
 
@@ -247,17 +280,114 @@ struct MyApp : DistributedAppWithState<CommonState> {
 
     if (time > delay) {
       time -= delay;
+
+
+      
       // delay = (rnd::uniform(1.0, 0.5)) / impulseRate;
       delay = 1 / impulseRate;
 
         // for melodic samples
       if (rateToggle < 0.5){
-        player.rate(grainRateMax * (rnd::prob(reverseAmount) ? -1 : 1));
+        player.rate(rnd::prob(0.5) ? grainRateMax : grainRateMin * (rnd::prob(reverseAmount) ? -1 : 1));
+
+
+        if (grainRateMax > 0.125 && grainRateMax < 0.25){
+          grainRateMax = 0.125;
+        }
+        if (grainRateMax > 0.25 && grainRateMax < 0.5){
+          grainRateMax = 0.25;
+        }
+        if (grainRateMax > 0.5 && grainRateMax < 0.75){
+          grainRateMax = 0.5;
+        }
+        if (grainRateMax > 0.75 && grainRateMax < 1){
+          grainRateMax = 0.75;
+        }
+        if (grainRateMax > 1 && grainRateMax < 2){
+          grainRateMax = 1;
+        }
+        if (grainRateMax > 2 && grainRateMax < 3){
+          grainRateMax = 2;
+        }
+        if (grainRateMax > 3 && grainRateMax < 4){
+          grainRateMax = 3;
+        }
+        if (grainRateMax > 4 && grainRateMax < 5){
+          grainRateMax = 4;
+        }
+        if (grainRateMax > 5 && grainRateMax < 6){
+          grainRateMax = 5;
+        }
+        if (grainRateMax > 6 && grainRateMax < 7){
+          grainRateMax = 6;
+        }
+        if (grainRateMax > 7 && grainRateMax < 8){
+          grainRateMax = 7;
+        }
+        if (grainRateMax > 8 && grainRateMax < 9){
+          grainRateMax = 8;
+        }
+        if (grainRateMax > 9 && grainRateMax < 10){
+          grainRateMax = 9;
+        }
+
+
+        if (grainRateMin > 0.0625 && grainRateMin < 0.125){
+          grainRateMin = 0.0625;
+        }
+        if (grainRateMin > 0.125 && grainRateMin < 0.25){
+          grainRateMin = 0.125;
+        }
+        if (grainRateMin > 0.25 && grainRateMin < 0.5){
+          grainRateMin = 0.25;
+        }
+        if (grainRateMin > 0.5 && grainRateMin < 0.75){
+          grainRateMin = 0.5;
+        }
+        if (grainRateMin > 0.75 && grainRateMin < 1){
+          grainRateMin = 0.75;
+        }
+        if (grainRateMin > 1 && grainRateMin < 2){
+          grainRateMin = 1;
+        }
+        if (grainRateMin > 2 && grainRateMin < 3){
+          grainRateMin = 2;
+        }
+        if (grainRateMin > 3 && grainRateMin < 4){
+          grainRateMin = 3;
+        }
+        if (grainRateMin > 4 && grainRateMin < 5){
+          grainRateMin = 4;
+        }
+        if (grainRateMin > 5 && grainRateMin < 6){
+          grainRateMin = 5;
+        }
+        if (grainRateMin > 6 && grainRateMin < 7){
+          grainRateMin = 6;
+        }
+        if (grainRateMin > 7 && grainRateMin < 8){
+          grainRateMin = 7;
+        }
+        if (grainRateMin > 8 && grainRateMin < 9){
+          grainRateMin = 8;
+        }
+        if (grainRateMin > 9 && grainRateMin < 10){
+          grainRateMin = 9;
+        }
+
       }
         // for textural samples
       if (rateToggle > 0.5){
         player.rate((float)rnd::uniform(1 * grainRateMax, 1 * grainRateMin) * (rnd::prob(reverseAmount) ? -1 : 1));
       }
+
+      // if (rateRandomization = false) {
+      //   player.rate(grainRateMax * (rnd::prob(reverseAmount) ? -1 : 1));
+      // }
+
+      // if (rateRandomization = true) {
+      //   player.rate((float)rnd::uniform(1 * grainRateMax, 1 * grainRateMin) * (rnd::prob(reverseAmount) ? -1 : 1));
+      // }
 
       float positionMin = grainPosition - grainSpread;
       float positionMax = grainPosition + grainSpread;
@@ -274,6 +404,24 @@ struct MyApp : DistributedAppWithState<CommonState> {
 
     }
     time += dt;
+
+    if (isPrimary()) {
+      // copy mesh verticies to state() array
+      // mesh.vertices = state().mVertices;
+      for(int i = 0; i < 50000; i++){
+        state().mVertices[i] = mesh.vertices()[i];
+      }
+    }
+    else {
+        // reset mesh
+        mesh.vertices().clear();
+        //  copy vertices from state() to mesh
+        for(int i = 0; i < 50000; i++){
+          mesh.vertex(state().mVertices[i]);
+        }
+        // Vec3f mVertex;
+        // create vec3f vertex 
+    }
   }
 
   void onSound(AudioIOData& io) override {
@@ -297,26 +445,40 @@ struct MyApp : DistributedAppWithState<CommonState> {
 
       // float s1 = player() * env() * amplitude;
       float s1 = player() * amplitude;
-      float s2 = player();
+      // float s2 = player();
       // float s2;
       // mPan(s1, s1, s2);
       io.out(0) = s1;
       io.out(1) = s1;
-      value.set(25 * ampFollow(s2));
+      value.set(25 * ampFollow(s1));
       for (int i = 0; i < 3; i++) {
-        parameter[i].set(follow[i](s2));
+        parameter[i].set(follow[i](s1));
       }
     }
+
+    // cout << value << endl;
 
     // cout << (parameter[0]) << endl;
 
       // x y z forces based on 3 band filter analysis 
     for (int i = 0; i < velocity.size(); i++) {
-      // force[i] += Vec3f(rnd::uniform(10,1) * parameter[0] * value * 2, rnd::uniform(10,1) * parameter[1] * value * 2, rnd::uniform(10,1)* parameter[2] * value * 2);
-      // force[i] -= Vec3f(rnd::uniform(10,1) * parameter[0] * value * 2, rnd::uniform(10,1) * parameter[1] * value * 2, rnd::uniform(10,1)* parameter[2] * value * 2);
+
       
-      force[i] += Vec3f(sin(rnd::uniform(10,1) * parameter[0] * value * 2), cos(rnd::uniform(10,1) * parameter[1] * value * 2), (rnd::uniform(10,1)* parameter[2] * value * 2) / (2 * M_PI));
-      force[i] -= Vec3f(sin(rnd::uniform(10,1) * parameter[0] * value * 2), cos(rnd::uniform(10,1) * parameter[1] * value * 2), (rnd::uniform(10,1)* parameter[2] * value * 2) / (2 * M_PI));
+      force[i] += Vec3f(sin(rnd::uniform(5,1) * parameter[0] * value * 2), parameter[1], parameter[2]);
+      force[i] += Vec3f(parameter[0], cos(rnd::uniform(5,1) * parameter[1] * value * 2), parameter[2]);
+      force[i] += Vec3f(parameter[1], parameter[0], (rnd::uniform(5,1) * parameter[2] * value * 2) / (2 * M_PI));
+
+      force[i] -= Vec3f(sin(rnd::uniform(5,1) * parameter[0] * value * 2), parameter[2], parameter[1]);
+      force[i] -= Vec3f(parameter[2], cos(rnd::uniform(10,1) * parameter[1] * value * 2), parameter[0]);
+      force[i] -= Vec3f(parameter[0], parameter[1],(rnd::uniform(10,1) * parameter[2] * value * 2) / (2 * M_PI));
+
+      force[i] += Vec3f(rnd::uniform(20,1) * parameter[0] * value * 2, rnd::uniform(20,1) * parameter[1] * value * 2, rnd::uniform(20,1)* parameter[2] * value * 2);
+      force[i] -= Vec3f(rnd::uniform(20,1) * parameter[0] * value * 2, rnd::uniform(20,1) * parameter[1] * value * 2, rnd::uniform(20,1)* parameter[2] * value * 2);
+      // force[i] -= Vec3f(sin(rnd::uniform(5,1) * parameter[0] * value * 2), cos(rnd::uniform(10,1) * parameter[1] * value * 2), (rnd::uniform(10,1)* parameter[2] * value * 2) / (2 * M_PI));
+      // force[i] -= Vec3f(sin(rnd::uniform(10,1) * parameter[2] * value * 2), cos(rnd::uniform(10,1) * parameter[0] * value * 2), (rnd::uniform(10,1)* parameter[1] * value * 2) / (2 * M_PI));
+     
+     
+      // force[i] -= Vec3f(sin(rnd::uniform(5,1) * parameter[0] * value * 2), cos(rnd::uniform(5,1) * parameter[1] * value * 2), (rnd::uniform(5,1)* parameter[2] * value * 2) / (2 * M_PI));
 
       // force[i] += Vec3f(parameter[0] * value * 20, parameter[1] * value * 20, parameter[2] * value * 20);
       // force[i] -= Vec3f(parameter[0] * value * 20, parameter[1] * value * 20, parameter[2] * value * 20);
@@ -339,22 +501,25 @@ struct MyApp : DistributedAppWithState<CommonState> {
       player.load("growth012.wav");
     }
 
-    if (k.key() == '2') {
-      player.load("piano.wav");
-    }
+    // if (k.key() == '2') {
+    //   player.load("piano.wav");
+    // }
 
-    if (k.key() == '3') {
-      player.load("3patch.wav");
-    }
+    // if (k.key() == '3') {
+    //   player.load("3patch.wav");
+    // }
 
-    if (k.key() == '4') {
-      player.load("myGuitarCmin..wav");
-    }
+    // if (k.key() == '4') {
+    //   player.load("myGuitarCmin..wav");
+    // }
 
-    if (k.key() == '5') {
-      player.load("take4.wav");
-    }
+    // if (k.key() == '5') {
+    //   player.load("take4.wav");
+    // }
 
+    // if (k.key() == 'r') {
+    //   mesh.vertices().assign(1);
+    // }
   
 
 
@@ -379,7 +544,7 @@ struct MyApp : DistributedAppWithState<CommonState> {
     g.depthTesting(true);
     // g.rotate(360*time, 0, 1, 0);
     // g.color(RGB(0.25 + sqrt(parameter[0]), 0.25 + sqrt(parameter[1]), 0.25 + sqrt(parameter[2])));
-    g.color(HSV((state().colorState[0] + state().colorState[1], state().colorState[2]),0.25 + value,1));
+    g.color(state().colorState);
     g.draw(mesh);
   }
 };
