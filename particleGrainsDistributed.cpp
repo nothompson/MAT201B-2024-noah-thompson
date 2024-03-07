@@ -20,7 +20,7 @@ using namespace std;
 struct CommonState {
   // float particlePositions[10000];
 
-  Vec3f mVertices[50000];
+  Vec3f mVertices[25000];
 
   float low;
   float med;
@@ -126,7 +126,9 @@ struct MyApp : DistributedAppWithState<CommonState> {
       quit();
     }
 
+    if(isPrimary()){
     player.load("growth012.wav");
+    }
 
     follow[0].filter.type(gam::LOW_PASS);
     follow[1].filter.type(gam::BAND_PASS);
@@ -135,35 +137,35 @@ struct MyApp : DistributedAppWithState<CommonState> {
     follow[1].filter.freq(2000);
     follow[2].filter.freq(8000);
 
-    if (isPrimary()) {
-        auto GUIdomain = GUIDomain::enableGUI(defaultWindowDomain());
-        auto &gui = GUIdomain->newGUI();
-        gui.add(AUDIO);
-        gui.add(amplitude);
-        gui.add(impulseRate);
-        // gui.add(rateRandomization);
-        gui.add(rateToggle);
-        gui.add(grainRateMax);
-        gui.add(grainRateMin);
-        gui.add(grainPosition);
-        gui.add(grainSpread);
-        // gui.add(grainPositionMin);
-        // gui.add(grainPositionMax);
-        gui.add(reverseAmount);
-        // gui.add(fadeRate);
-        gui.add(fadeSlope);
-        // gui.add(fadeIn);
-        // gui.add(fadeOut);
-        gui.add(VISUALS);
-        gui.add(pointSize);  // add parameter to GUI
-        // gui.add(timeStep);   // add parameter to GUI
-        gui.add(dragFactor);   // add parameter to GUI
-        gui.add(sphereRadius);
-        gui.add(hookeConstant);
-        // gui.add(coulombConstant);
-        // gui.add(symmetry);
-        // gui.add(kickAmount);
-        // gui.add(panRange);
+  if (isPrimary()) {
+    auto GUIdomain = GUIDomain::enableGUI(defaultWindowDomain());
+    auto &gui = GUIdomain->newGUI();
+    gui.add(AUDIO);
+    gui.add(amplitude);
+    gui.add(impulseRate);
+    // gui.add(rateRandomization);
+    gui.add(rateToggle);
+    gui.add(grainRateMax);
+    gui.add(grainRateMin);
+    gui.add(grainPosition);
+    gui.add(grainSpread);
+    // gui.add(grainPositionMin);
+    // gui.add(grainPositionMax);
+    gui.add(reverseAmount);
+    // gui.add(fadeRate);
+    gui.add(fadeSlope);
+    // gui.add(fadeIn);
+    // gui.add(fadeOut);
+    gui.add(VISUALS);
+    gui.add(pointSize);  // add parameter to GUI
+    // gui.add(timeStep);   // add parameter to GUI
+    gui.add(dragFactor);   // add parameter to GUI
+    gui.add(sphereRadius);
+    gui.add(hookeConstant);
+    // gui.add(coulombConstant);
+    // gui.add(symmetry);
+    // gui.add(kickAmount);
+    // gui.add(panRange);
     }
   }
 
@@ -186,7 +188,7 @@ struct MyApp : DistributedAppWithState<CommonState> {
 
 
     mesh.primitive(Mesh::POINTS);
-    for (int _ = 0; _ < 50000; _++) {
+    for (int _ = 0; _ < 25000; _++) {
       mesh.vertex(Vec3f(2 * sin(1.5), 2 * cos(1.5), (1/ (2 * M_PI)) * 1.5));
       // mesh.vertex(randomVec3f(1));
       
@@ -254,19 +256,13 @@ struct MyApp : DistributedAppWithState<CommonState> {
 
     vector<Vec3f> &position(mesh.vertices());
 
-    state().low = parameter[0];
-    state().med = parameter[1];
-    state().high = parameter[2];
-    state().value = value;
-
-    state().colorState = HSV((state().low + state().med + state().high), 0.25 + state().value, 1.0);
   
     // float pointSize = (grainRateMax + grainRateMin) / 2;
 
     float mImpulse = impulseRate;
 
-    if (mImpulse > 5.0) {
-      mImpulse = 5.0;
+    if (mImpulse > 10.0) {
+      mImpulse = 10.0;
     }
 
     for (int i = 0; i < velocity.size(); i++) {
@@ -410,7 +406,7 @@ struct MyApp : DistributedAppWithState<CommonState> {
     if (isPrimary()) {
       // copy mesh verticies to state() array
       // mesh.vertices = state().mVertices;
-      for(int i = 0; i < 50000; i++){
+      for(int i = 0; i < 25000; i++){
         state().mVertices[i] = mesh.vertices()[i];
       }
     }
@@ -418,7 +414,7 @@ struct MyApp : DistributedAppWithState<CommonState> {
         // reset mesh
         mesh.vertices().clear();
         //  copy vertices from state() to mesh
-        for(int i = 0; i < 50000; i++){
+        for(int i = 0; i < 25000; i++){
           mesh.vertex(state().mVertices[i]);
         }
         // Vec3f mVertex;
@@ -462,6 +458,13 @@ struct MyApp : DistributedAppWithState<CommonState> {
 
     // cout << (parameter[0]) << endl;
 
+    state().low = parameter[0];
+    state().med = parameter[1];
+    state().high = parameter[2];
+    state().value = value;
+
+    state().colorState = HSV((state().low + state().med + state().high), 0.25 + state().value, 1.0);
+
       // x y z forces based on 3 band filter analysis 
     for (int i = 0; i < velocity.size(); i++) {
 
@@ -500,23 +503,33 @@ struct MyApp : DistributedAppWithState<CommonState> {
     }
 
     if (k.key() == '1') {
-      player.load("growth012.wav");
+      if(isPrimary()){
+      player.load("growth012.wav");  
+      }
     }
 
-    // if (k.key() == '2') {
-    //   player.load("piano.wav");
-    // }
+    if (k.key() == '2') {
+      if(isPrimary()){
+      player.load("piano.wav"); 
+      }
+    }
 
-    // if (k.key() == '3') {
-    //   player.load("3patch.wav");
-    // }
+    if (k.key() == '3') {
+      if(isPrimary()){
+      player.load("3patch.wav"); 
+      }
+    }
 
-    // if (k.key() == '4') {
-    //   player.load("myGuitarCmin..wav");
-    // }
+    if (k.key() == '4') {
+      if(isPrimary()){
+      player.load("take4.wav");  
+      }
+    }
 
-    // if (k.key() == '5') {
-    //   player.load("take4.wav");
+    // if (k.key() == '5' ){
+    //   if(isPrimary()){
+
+    //   }
     // }
 
     // if (k.key() == 'r') {
