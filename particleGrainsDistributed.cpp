@@ -453,7 +453,7 @@ struct MyApp : DistributedAppWithState<CommonState> {
       // mPan(s1, s1, s2);
       io.out(0) = s1;
       io.out(1) = s1;
-      value.set(25 * ampFollow(s1));
+      value.set(50 * ampFollow(s1));
       for (int i = 0; i < 3; i++) {
         parameter[i].set(follow[i](s1));
       }
@@ -474,16 +474,20 @@ struct MyApp : DistributedAppWithState<CommonState> {
     for (int i = 0; i < velocity.size(); i++) {
 
       
-      force[i] += Vec3f(sin(rnd::uniform(5,1) * parameter[0] * value * 2), parameter[1], parameter[2]);
-      force[i] += Vec3f(parameter[0], cos(rnd::uniform(5,1) * parameter[1] * value * 2), parameter[2]);
+      force[i] += Vec3f(sin(rnd::uniform(20,1) * parameter[0] * value * 2), parameter[1], parameter[2]);
+      force[i] += Vec3f(parameter[0], cos(rnd::uniform(20,1) * parameter[1] * value * 2), parameter[2]);
       force[i] += Vec3f(parameter[1], parameter[0], (rnd::uniform(5,1) * parameter[2] * value * 2) / (2 * M_PI));
 
-      force[i] -= Vec3f(sin(rnd::uniform(5,1) * parameter[0] * value * 2), parameter[2], parameter[1]);
+      force[i] -= Vec3f(sin(rnd::uniform(10,1) * parameter[0] * value * 2), parameter[2], parameter[1]);
       force[i] -= Vec3f(parameter[2], cos(rnd::uniform(10,1) * parameter[1] * value * 2), parameter[0]);
-      force[i] -= Vec3f(parameter[0], parameter[1],(rnd::uniform(10,1) * parameter[2] * value * 2) / (2 * M_PI));
+      force[i] -= Vec3f(parameter[0], parameter[1],(rnd::uniform(20,1) * parameter[2] * value * 2) / (2 * M_PI));
 
       force[i] += Vec3f(rnd::uniform(20,1) * parameter[0] * value * 2, rnd::uniform(20,1) * parameter[1] * value * 2, rnd::uniform(20,1)* parameter[2] * value * 2);
       force[i] -= Vec3f(rnd::uniform(20,1) * parameter[0] * value * 2, rnd::uniform(20,1) * parameter[1] * value * 2, rnd::uniform(20,1)* parameter[2] * value * 2);
+
+      // force[i] += Vec3f(rnd::uniform(30,1) * (cos(parameter[0]*sphereRadius) + sin(parameter[0]*sphereRadius)) * value *2, rnd::uniform(30,1) * (cos(parameter[1]*sphereRadius) + sin(parameter[1]*sphereRadius)) * value *2, rnd::uniform(10,1) * (cos(parameter[2]*sphereRadius) + sin(parameter[2]*sphereRadius)) * value *2);
+      // force[i] -= Vec3f(rnd::uniform(30,1) * (cos(parameter[0]*sphereRadius) + sin(parameter[0]*sphereRadius)) * value *2, rnd::uniform(30,1) * (cos(parameter[1]*sphereRadius) + sin(parameter[1]*sphereRadius)) * value *2, rnd::uniform(10,1) * (cos(parameter[2]*sphereRadius) + sin(parameter[2]*sphereRadius)) * value *2);
+
       // force[i] -= Vec3f(sin(rnd::uniform(5,1) * parameter[0] * value * 2), cos(rnd::uniform(10,1) * parameter[1] * value * 2), (rnd::uniform(10,1)* parameter[2] * value * 2) / (2 * M_PI));
       // force[i] -= Vec3f(sin(rnd::uniform(10,1) * parameter[2] * value * 2), cos(rnd::uniform(10,1) * parameter[0] * value * 2), (rnd::uniform(10,1)* parameter[1] * value * 2) / (2 * M_PI));
      
@@ -584,3 +588,4 @@ string slurp(string fileName) {
   }
   return returnValue;
 }
+
