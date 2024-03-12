@@ -26,6 +26,8 @@ struct CommonState {
   float med;
   float high;
   float value;
+
+  Pose pose;
   // HSV colorState = ((low + med + high),1,1);
 
   HSV colorState;
@@ -127,7 +129,7 @@ struct MyApp : DistributedAppWithState<CommonState> {
     }
 
     if(isPrimary()){
-    player.load("growth012.wav");
+    player.load("../growth012.wav");
     }
 
     follow[0].filter.type(gam::LOW_PASS);
@@ -207,7 +209,7 @@ struct MyApp : DistributedAppWithState<CommonState> {
       force.push_back(randomVec3f(1));
     }
 
-    nav().pos(0, 0, 20);
+    nav().pos(0, 0, 7);
 
     ampFollow.lag(0.1);
   }
@@ -404,11 +406,12 @@ struct MyApp : DistributedAppWithState<CommonState> {
     time += dt;
 
     if (isPrimary()) {
-      // copy mesh verticies to state() array
+      // copy mesh vertices to state() array
       // mesh.vertices = state().mVertices;
       for(int i = 0; i < 25000; i++){
         state().mVertices[i] = mesh.vertices()[i];
       }
+      state().pose = nav();
     }
     else {
         // reset mesh
@@ -417,6 +420,8 @@ struct MyApp : DistributedAppWithState<CommonState> {
         for(int i = 0; i < 25000; i++){
           mesh.vertex(state().mVertices[i]);
         }
+
+        nav().set(state().pose);
         // Vec3f mVertex;
         // create vec3f vertex 
     }
@@ -504,33 +509,33 @@ struct MyApp : DistributedAppWithState<CommonState> {
 
     if (k.key() == '1') {
       if(isPrimary()){
-      player.load("growth012.wav");  
+      player.load("../growth012.wav");  
       }
     }
 
     if (k.key() == '2') {
       if(isPrimary()){
-      player.load("piano.wav"); 
+      player.load("../growth(41).wav"); 
       }
     }
 
     if (k.key() == '3') {
       if(isPrimary()){
-      player.load("3patch.wav"); 
+      player.load("../growth011.wav"); 
       }
     }
 
     if (k.key() == '4') {
       if(isPrimary()){
-      player.load("take4.wav");  
+      player.load("../growth013.wav");  
       }
     }
 
-    // if (k.key() == '5' ){
-    //   if(isPrimary()){
-
-    //   }
-    // }
+    if (k.key() == '5' ){
+      if(isPrimary()){
+      player.load("../metallicEnding140.wav");
+      }
+    }
 
     // if (k.key() == 'r') {
     //   mesh.vertices().assign(1);
@@ -579,4 +584,3 @@ string slurp(string fileName) {
   }
   return returnValue;
 }
-
