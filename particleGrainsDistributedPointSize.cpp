@@ -5,8 +5,6 @@
 #include "Gamma/Effects.h"
 #include "Gamma/Analysis.h"
 #include "Gamma/Envelope.h"
-#include "Gamma/Oscillator.h"
-#include "Gamma/Filter.h"
 
 using namespace al;
 using namespace std;
@@ -22,15 +20,21 @@ using namespace std;
 struct CommonState {
   // float particlePositions[10000];
 
-  Vec3f mVertices[25000];
+  Vec3f mVertices[10000];
 
   float low;
   float med;
   float high;
   float value;
+
+  Pose pose;
   // HSV colorState = ((low + med + high),1,1);
 
   HSV colorState;
+
+  Color color[10000];
+
+  float pointSize;
 };
 
 
@@ -63,10 +67,8 @@ struct MyApp : DistributedAppWithState<CommonState> {
 
   Parameter value {"/value", "", 0,0,1};
   gam::EnvFollow<>ampFollow;
-  // gam::Accum<>tmr;
-  // gam::AD<>env;
-  gam::Biquad<>filter{}; 
-  gam::LFO<>lfo;
+  gam::Accum<>tmr;
+  gam::AD<>env;
   float slope;
 
 
@@ -91,12 +93,7 @@ struct MyApp : DistributedAppWithState<CommonState> {
   // Parameter fadeOut{"/fadeOut", "", 2.0, 2.0, 10000.0};
 
   // Parameter fadeRate{"/fadeRate", "", 1.2, 0.1, 10.0};
-  // Parameter fadeSlope{"/fadeSlope", "", 0.3, 0.0, 1.0};
-
-  Parameter filterFreq{"/filterFreq", "", 500.0, 40.0, 20000.0};
-  Parameter filterResonance{"/filterResonance", "", 1.0, 0.1, 100.0};
-  Parameter filterOffset{"/filterOffset", "", 50.0, 1.0, 5000.0};
-  Parameter lfoRate{"/lfoRate", "", 1.0, 0.05, 10.0};
+  Parameter fadeSlope{"/fadeSlope", "", 0.3, 0.0, 1.0};
 
   Parameter VISUALS{"/VISUALS", "", 0, 0, 0};
   Parameter pointSize{"/pointSize", "", 1.0, 0.0, 2.0};
@@ -135,7 +132,9 @@ struct MyApp : DistributedAppWithState<CommonState> {
       quit();
     }
 
-    player.load("growth012.wav");
+    if(isPrimary()){
+    player.load("../growth012.wav");
+    }
 
     follow[0].filter.type(gam::LOW_PASS);
     follow[1].filter.type(gam::BAND_PASS);
@@ -144,8 +143,7 @@ struct MyApp : DistributedAppWithState<CommonState> {
     follow[1].filter.freq(2000);
     follow[2].filter.freq(8000);
 
-
-  if (isPrimary()){
+  if (isPrimary()) {
     auto GUIdomain = GUIDomain::enableGUI(defaultWindowDomain());
     auto &gui = GUIdomain->newGUI();
     gui.add(AUDIO);
@@ -161,12 +159,7 @@ struct MyApp : DistributedAppWithState<CommonState> {
     // gui.add(grainPositionMax);
     gui.add(reverseAmount);
     // gui.add(fadeRate);
-    // gui.add(fadeSlope);
-    gui.add(filterFreq);
-    gui.add(filterResonance);
-    gui.add(filterOffset);
-    gui.add(lfoRate);
-
+    gui.add(fadeSlope);
     // gui.add(fadeIn);
     // gui.add(fadeOut);
     gui.add(VISUALS);
@@ -201,11 +194,11 @@ struct MyApp : DistributedAppWithState<CommonState> {
 
 
     mesh.primitive(Mesh::POINTS);
-    for (int _ = 0; _ < 25000; _++) {
+    for (int _ = 0; _ < 10000; _++) {
       mesh.vertex(Vec3f(2 * sin(1.5), 2 * cos(1.5), (1/ (2 * M_PI)) * 1.5));
       // mesh.vertex(randomVec3f(1));
       
-      mesh.color(randomColor());
+      mesh.color(state().colorState);
 
       // float m = rnd::uniform(3.0, 0.5);
       float m = 3 + rnd::normal() / 2;
@@ -220,7 +213,7 @@ struct MyApp : DistributedAppWithState<CommonState> {
       force.push_back(randomVec3f(1));
     }
 
-    nav().pos(0, 0, 20);
+    nav().pos(0, 0, 7);
 
     ampFollow.lag(0.1);
   }
@@ -269,14 +262,13 @@ struct MyApp : DistributedAppWithState<CommonState> {
 
     vector<Vec3f> &position(mesh.vertices());
 
-
   
     // float pointSize = (grainRateMax + grainRateMin) / 2;
 
     float mImpulse = impulseRate;
 
-    if (mImpulse > 5.0) {
-      mImpulse = 5.0;
+    if (mImpulse > 10.0) {
+      mImpulse = 10.0;
     }
 
     for (int i = 0; i < velocity.size(); i++) {
@@ -414,76 +406,67 @@ struct MyApp : DistributedAppWithState<CommonState> {
       // player.phase((float)grainPosition);
       // player.phase(0);
 
-      
-
     }
     time += dt;
 
     if (isPrimary()) {
-      // copy mesh verticies to state() array
+      // copy mesh vertices to state() array
       // mesh.vertices = state().mVertices;
-      for(int i = 0; i < 25000; i++){
+      for(int i = 0; i < 10000; i++){
         state().mVertices[i] = mesh.vertices()[i];
+        // mesh.colors()[i] = state().colorState;
       }
+      state().pose = nav();
+      state().pointSize = pointSize;
     }
     else {
         // reset mesh
         mesh.vertices().clear();
         //  copy vertices from state() to mesh
-        for(int i = 0; i < 25000; i++){
+        for(int i = 0; i < 10000; i++){
           mesh.vertex(state().mVertices[i]);
+          // state().colorState = mesh.colors()[i];
         }
+        pointSize = state().pointSize;
+
+        nav().set(state().pose);
         // Vec3f mVertex;
         // create vec3f vertex 
     }
-  }
 
+    state().pointSize = pointSize;
+  }
 
   void onSound(AudioIOData& io) override {
     // mPan.pos(rnd::uniform(1 * panRange, 0));
-
-    filter.type(gam::FilterType(0));
-    filter.res(filterResonance);
-    
-    // float randLFO = 1 * (rnd::uniform(-1.0,1.0));
-
-    lfo.freq(lfoRate);
-    float lfoValue{0.0f};
-
-    // tmr.phaseMax();
-    // slope = fadeSlope;
+    tmr.phaseMax();
+    slope = fadeSlope;
     while (io()) {
       // player.fade(fadeIn,fadeOut);
 
-    // filter.freq(filterFreq + (filterOffset * randLFO));
-    lfoValue = lfo.downU();
-    filter.freq(filterFreq + (filterOffset * lfoValue));
-    // tmr.period(1 / impulseRate);
+    tmr.period(1 / impulseRate);
 
-    //   if(tmr()){
-    //     env.attack(slope);
-    //     env.decay(1-slope);
-    //     env.amp(1.0);
-    //     env.reset();
+      if(tmr()){
+        env.attack(slope);
+        env.decay(1-slope);
+        env.amp(1.0);
+        env.reset();
 
-    //     slope +=0.01;
-    //     if(slope > 1) slope = fadeSlope;
-    //   }
-
-      
-      // filter.freq(filterFreq + (filterOffset * lfoValue));
+        slope +=0.01;
+        if(slope > 1) slope = fadeSlope;
+      }
 
       // float s1 = player() * env() * amplitude;
       float s1 = player() * amplitude;
-      float filtered = filter(s1);
       // float s2 = player();
       // float s2;
       // mPan(s1, s1, s2);
-      io.out(0) = filtered;
-      io.out(1) = filtered;
-      value.set(25 * ampFollow(filtered));
+      for (int i = 0; i < audioIO().channelsOutDevice(); i++) {
+        io.out(i) = s1;
+      }
+      value.set(50 * ampFollow(s1));
       for (int i = 0; i < 3; i++) {
-        parameter[i].set(follow[i](filtered));
+        parameter[i].set(follow[i](s1));
       }
     }
 
@@ -498,20 +481,56 @@ struct MyApp : DistributedAppWithState<CommonState> {
 
     state().colorState = HSV((state().low + state().med + state().high), 0.25 + state().value, 1.0);
 
+    
+
+    if (isPrimary()) {
+      // copy mesh vertices to state() array
+      // mesh.vertices = state().mVertices;
+      for(int i = 0; i < 10000; i++){
+        // state().colorState = mesh.colors()[i];
+        state().color[i] = HSV((state().low + state().med + state().high), 0.25 + state().value, 1.0);
+        mesh.colors()[i] = state().color[i];
+      }
+    }
+    else {
+        // reset mesh
+        mesh.colors().clear();
+        //  copy vertices from state() to mesh
+        for(int i = 0; i < 10000; i++){
+          mesh.colors()[i] = state().color[i];
+          // state().color[i] = mesh.colors()[i];
+        }
+    }
+
+    // for (int i = 0; i < 25000; i++){
+    // // mesh.colors()[i].r = state().low;
+    // // mesh.colors()[i].g = state().med;
+    // // mesh.colors()[i].b = state().high;
+    // // mesh.colors()[i].a = 1;
+
+    // mesh.colors()[i] = state().colorState;
+    
+    // // mesh.color()[i].hsv = ((state().low + state().med + state().high), 0.25 + state().value, 1.0);
+    // }
+
       // x y z forces based on 3 band filter analysis 
     for (int i = 0; i < velocity.size(); i++) {
 
       
-      force[i] += Vec3f(sin(rnd::uniform(5,1) * parameter[0] * value * 2), parameter[1], parameter[2]);
-      force[i] += Vec3f(parameter[0], cos(rnd::uniform(5,1) * parameter[1] * value * 2), parameter[2]);
+      force[i] += Vec3f(sin(rnd::uniform(20,1) * parameter[0] * value * 2), parameter[1], parameter[2]);
+      force[i] += Vec3f(parameter[0], cos(rnd::uniform(20,1) * parameter[1] * value * 2), parameter[2]);
       force[i] += Vec3f(parameter[1], parameter[0], (rnd::uniform(5,1) * parameter[2] * value * 2) / (2 * M_PI));
 
-      force[i] -= Vec3f(sin(rnd::uniform(5,1) * parameter[0] * value * 2), parameter[2], parameter[1]);
+      force[i] -= Vec3f(sin(rnd::uniform(10,1) * parameter[0] * value * 2), parameter[2], parameter[1]);
       force[i] -= Vec3f(parameter[2], cos(rnd::uniform(10,1) * parameter[1] * value * 2), parameter[0]);
-      force[i] -= Vec3f(parameter[0], parameter[1],(rnd::uniform(10,1) * parameter[2] * value * 2) / (2 * M_PI));
+      force[i] -= Vec3f(parameter[0], parameter[1],(rnd::uniform(20,1) * parameter[2] * value * 2) / (2 * M_PI));
 
       force[i] += Vec3f(rnd::uniform(20,1) * parameter[0] * value * 2, rnd::uniform(20,1) * parameter[1] * value * 2, rnd::uniform(20,1)* parameter[2] * value * 2);
       force[i] -= Vec3f(rnd::uniform(20,1) * parameter[0] * value * 2, rnd::uniform(20,1) * parameter[1] * value * 2, rnd::uniform(20,1)* parameter[2] * value * 2);
+
+      // force[i] += Vec3f(rnd::uniform(30,1) * (cos(parameter[0]*sphereRadius) + sin(parameter[0]*sphereRadius)) * value *2, rnd::uniform(30,1) * (cos(parameter[1]*sphereRadius) + sin(parameter[1]*sphereRadius)) * value *2, rnd::uniform(10,1) * (cos(parameter[2]*sphereRadius) + sin(parameter[2]*sphereRadius)) * value *2);
+      // force[i] -= Vec3f(rnd::uniform(30,1) * (cos(parameter[0]*sphereRadius) + sin(parameter[0]*sphereRadius)) * value *2, rnd::uniform(30,1) * (cos(parameter[1]*sphereRadius) + sin(parameter[1]*sphereRadius)) * value *2, rnd::uniform(10,1) * (cos(parameter[2]*sphereRadius) + sin(parameter[2]*sphereRadius)) * value *2);
+
       // force[i] -= Vec3f(sin(rnd::uniform(5,1) * parameter[0] * value * 2), cos(rnd::uniform(10,1) * parameter[1] * value * 2), (rnd::uniform(10,1)* parameter[2] * value * 2) / (2 * M_PI));
       // force[i] -= Vec3f(sin(rnd::uniform(10,1) * parameter[2] * value * 2), cos(rnd::uniform(10,1) * parameter[0] * value * 2), (rnd::uniform(10,1)* parameter[1] * value * 2) / (2 * M_PI));
      
@@ -536,23 +555,33 @@ struct MyApp : DistributedAppWithState<CommonState> {
     }
 
     if (k.key() == '1') {
-      player.load("growth012.wav");
+      if(isPrimary()){
+      player.load("../growth012.wav");  
+      }
     }
 
     if (k.key() == '2') {
-      player.load("piano.wav");
+      if(isPrimary()){
+      player.load("../growth(41).wav"); 
+      }
     }
 
     if (k.key() == '3') {
-      player.load("3patch.wav");
+      if(isPrimary()){
+      player.load("../growth011.wav"); 
+      }
     }
 
     if (k.key() == '4') {
-      player.load("myGuitarCmin..wav");
+      if(isPrimary()){
+      player.load("../growth013.wav");  
+      }
     }
 
-    if (k.key() == '5') {
-      player.load("take4.wav");
+    if (k.key() == '5' ){
+      if(isPrimary()){
+      player.load("../metallicEnding140.wav");
+      }
     }
 
     // if (k.key() == 'r') {
@@ -576,13 +605,13 @@ struct MyApp : DistributedAppWithState<CommonState> {
   void onDraw(Graphics &g) override {
     g.clear(0);
     g.shader(pointShader);
-    g.shader().uniform("pointSize", pointSize / 100);
+    g.shader().uniform("pointSize", state().pointSize / 100);
     g.blending(true);
     g.blendTrans();
     g.depthTesting(true);
     // g.rotate(360*time, 0, 1, 0);
     // g.color(RGB(0.25 + sqrt(parameter[0]), 0.25 + sqrt(parameter[1]), 0.25 + sqrt(parameter[2])));
-    g.color(state().colorState);
+    // g.color(state().colorState);
     g.draw(mesh);
   }
 };
