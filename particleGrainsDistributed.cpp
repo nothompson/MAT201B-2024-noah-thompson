@@ -31,6 +31,10 @@ struct CommonState {
   // HSV colorState = ((low + med + high),1,1);
 
   HSV colorState;
+
+  Color color[25000];
+
+  float pointSize;
 };
 
 
@@ -194,7 +198,7 @@ struct MyApp : DistributedAppWithState<CommonState> {
       mesh.vertex(Vec3f(2 * sin(1.5), 2 * cos(1.5), (1/ (2 * M_PI)) * 1.5));
       // mesh.vertex(randomVec3f(1));
       
-      mesh.color(randomColor());
+      mesh.color(state().colorState);
 
       // float m = rnd::uniform(3.0, 0.5);
       float m = 3 + rnd::normal() / 2;
@@ -410,8 +414,10 @@ struct MyApp : DistributedAppWithState<CommonState> {
       // mesh.vertices = state().mVertices;
       for(int i = 0; i < 25000; i++){
         state().mVertices[i] = mesh.vertices()[i];
+        // mesh.colors()[i] = state().colorState;
       }
       state().pose = nav();
+      state().pointSize = pointSize;
     }
     else {
         // reset mesh
@@ -419,12 +425,16 @@ struct MyApp : DistributedAppWithState<CommonState> {
         //  copy vertices from state() to mesh
         for(int i = 0; i < 25000; i++){
           mesh.vertex(state().mVertices[i]);
+          // state().colorState = mesh.colors()[i];
         }
+        pointSize = state().pointSize;
 
         nav().set(state().pose);
         // Vec3f mVertex;
         // create vec3f vertex 
     }
+
+    state().pointSize = pointSize;
   }
 
   void onSound(AudioIOData& io) override {
@@ -451,8 +461,9 @@ struct MyApp : DistributedAppWithState<CommonState> {
       // float s2 = player();
       // float s2;
       // mPan(s1, s1, s2);
-      io.out(0) = s1;
-      io.out(1) = s1;
+      for (int i = 0; i < audioIO().channelsOutDevice(); i++) {
+        io.out(i) = s1;
+      }
       value.set(50 * ampFollow(s1));
       for (int i = 0; i < 3; i++) {
         parameter[i].set(follow[i](s1));
@@ -469,6 +480,38 @@ struct MyApp : DistributedAppWithState<CommonState> {
     state().value = value;
 
     state().colorState = HSV((state().low + state().med + state().high), 0.25 + state().value, 1.0);
+
+    
+
+    // if (isPrimary()) {
+    //   // copy mesh vertices to state() array
+    //   // mesh.vertices = state().mVertices;
+    //   for(int i = 0; i < 25000; i++){
+    //     // state().colorState = mesh.colors()[i];
+    //     state().color[i] = HSV((state().low + state().med + state().high), 0.25 + state().value, 1.0);
+    //     mesh.colors()[i] = state().color[i];
+    //   }
+    // }
+    // else {
+    //     // reset mesh
+    //     mesh.colors().clear();
+    //     //  copy vertices from state() to mesh
+    //     for(int i = 0; i < 25000; i++){
+    //       mesh.colors()[i] = state().color[i];
+    //       // state().color[i] = mesh.colors()[i];
+    //     }
+    // }
+
+    // for (int i = 0; i < 25000; i++){
+    // // mesh.colors()[i].r = state().low;
+    // // mesh.colors()[i].g = state().med;
+    // // mesh.colors()[i].b = state().high;
+    // // mesh.colors()[i].a = 1;
+
+    // mesh.colors()[i] = state().colorState;
+    
+    // // mesh.color()[i].hsv = ((state().low + state().med + state().high), 0.25 + state().value, 1.0);
+    // }
 
       // x y z forces based on 3 band filter analysis 
     for (int i = 0; i < velocity.size(); i++) {
@@ -562,7 +605,7 @@ struct MyApp : DistributedAppWithState<CommonState> {
   void onDraw(Graphics &g) override {
     g.clear(0);
     g.shader(pointShader);
-    g.shader().uniform("pointSize", pointSize / 100);
+    g.shader().uniform("pointSize", state().pointSize / 100);
     g.blending(true);
     g.blendTrans();
     g.depthTesting(true);
